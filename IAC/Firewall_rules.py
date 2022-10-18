@@ -13,6 +13,18 @@ def firewall_rule_IAP(network,name_net,name_rule,ports_tcp,target_tag,source_ran
     source_ranges=source_ranges,
     target_tags=target_tag,
     opts=pulumi.ResourceOptions(network))
+def firewall_rule_CICD(network,name_net,name_rule,ports_tcp,target_tag,source_ranges):
+    default_firewall = gcp.compute.Firewall(name_rule,
+    network=name_net,
+    allows=[
+        gcp.compute.FirewallAllowArgs(
+            protocol="tcp",
+            ports=ports_tcp,
+        ),
+    ],
+    source_ranges=source_ranges,
+    target_tags=target_tag,
+    opts=pulumi.ResourceOptions(network))
 def firewall_rule_internal(network,name_net,name_rule,ports,source_ranges):
     default_firewall = gcp.compute.Firewall(name_rule,
         network=name_net,

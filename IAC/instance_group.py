@@ -16,3 +16,5 @@ def instance_group(network,name,descr,instances_ig,zone_ig):
     ],
     zone=zone_ig,
     opts=pulumi.ResourceOptions(depends_on=network))
+    return webservers
+    

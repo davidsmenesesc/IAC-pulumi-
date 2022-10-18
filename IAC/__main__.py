@@ -33,9 +33,33 @@ if __name__ == "__main__":
     # #Create firewall rule for internal connection between machines
     # #VAR: name_net,name_rule,ports_tcp,fire_tags,source_ranges
         name_rule="allow-internal-machines"
-        ports_tcp=["0-65535"]
+        ports_tcp=["8080"]
         source_ranges=["0.0.0.0/0"]
+        #fw.firewall_rule_internal(vpc,name_netw,name_rule,ports_tcp,source_ranges)
+    # #Create firewall rule for internal connection between machines
+    # #VAR: name_net,name_rule,ports_tcp,fire_tags,source_ranges
+        name_rule="allow-kubernetes-internal"
+        ports_tcp=["6443"]
+        source_ranges=["10.0.1.0/25"]
         fw.firewall_rule_internal(vpc,name_netw,name_rule,ports_tcp,source_ranges)
+    # #Create firewall rule for internal connection between machines
+    # #VAR: name_net,name_rule,ports_tcp,fire_tags,source_ranges
+        name_rule="allow-lb-internal"
+        ports_tcp=["30001"]
+        source_ranges=["35.191.0.0/16","130.211.0.0/22"]
+        fw.firewall_rule_internal(vpc,name_netw,name_rule,ports_tcp,source_ranges)
+    # #Create firewall rule for internal connection between machines
+    # #VAR: name_net,name_rule,ports_tcp,fire_tags,source_ranges
+        name_rule="allow-cicd-internal"
+        ports_tcp=["22","6443"]
+        source_ranges=["10.0.0.0/25"]
+        fw.firewall_rule_internal(vpc,name_netw,name_rule,ports_tcp,source_ranges)
+    # #VAR: network,name_net,name_rule,ports_tcp,target_tag,source_ranges
+        name_rule="allow-external-cicd"
+        ports_tcp=["8080"]
+        source_ranges=["186.155.18.82"]
+        target_tag1=["cicd"]
+        fw.firewall_rule_CICD(vpc,name_netw,name_rule,ports_tcp,target_tag1,source_ranges)
     #Create router for internet access
     #VAR: rout_name,region,name_netw
         rout_name="nat-config"
@@ -114,27 +138,37 @@ if __name__ == "__main__":
         script=""
         service_email="998637135499-compute@developer.gserviceaccount.com"
         vm5=vm.create_kub_vm(subnet_kube,mach_name,mach_type,mach_zone,mach_tags,mach_image,mach_netw,mach_subnet,script,service_email)
+    #Create machine for CICD
+        with open('script-jenkins.txt','r') as init_script:
+            data_jen = init_script.read()
+        script_jen = data_jen   
+        mach_name="cicd-machine"
+        mach_type="e2-medium"
+        mach_zone="us-east1-c"
+        mach_tags=["http-server","https-server","web","http-tag","cicd"]
+        mach_image="projects/ubuntu-os-cloud/global/images/ubuntu-2004-focal-v20220905"
+        mach_netw=name_netw
+        mach_subnet="management-subnet"
+        script=script_jen
+        service_email="998637135499-compute@developer.gserviceaccount.com"
+        vm5=vm.create_jen_vm(subnet_kube,mach_name,mach_type,mach_zone,mach_tags,mach_image,mach_netw,mach_subnet,script,service_email)
     #Create instance groups
         name_instance_group="zone-b-kube"
         description="Zone b for ig"
-        instance1=vm1.self_link
         instance2=vm2.self_link
         instances=[]
-        instances.append(instance1)
         instances.append(instance2)
         zone="us-east1-b"
-        ig.instance_group(vpc,name_instance_group,description,instances,zone)
+        instanceg1=ig.instance_group(vpc,name_instance_group,description,instances,zone)
     #Create instance groups
         name_instance_group="zone-c-kube"
         description="Zone c for ig"
-        instance1=vm3.self_link
         instance2=vm4.self_link
         instances=[]
-        instances.append(instance1)
         instances.append(instance2)
         zone="us-east1-c"
-        ig.instance_group(vpc,name_instance_group,description,instances,zone)
+        instanceg2=ig.instance_group(vpc,name_instance_group,description,instances,zone)
         #Creation of the load balancer
         #name_bck_sv,name_url_map,hosts_lb,name_patcher,name_httpro,name_fwr,port_range_fwr
-        lb.load_balancer(name_bck_sv="mvi-bck-sv",name_url_map="lb-mvi",hosts_lb=["mviapp.com"],name_patcher="patcher-mvi",name_httpro="mvi-proxy",name_fwr="mvi-rule",port_range_fwr=8080)
+        lb.load_balancer(name_bck_sv="mvi-bck-sv",name_url_map="lb-mvi",hosts_lb=["mviapp.com"],name_patcher="patcher-mvi",name_httpro="mvi-proxy",name_fwr="mvi-rule",port_range_fwr=8080,instance_groups=[gcp.compute.BackendServiceBackendArgs(group=instanceg1.id,),gcp.compute.BackendServiceBackendArgs(group=instanceg2.id,)])
         #lb.load_balancer_base()

@@ -2,10 +2,18 @@ import pulumi
 import pulumi_gcp as gcp
 
 
-def load_balancer(name_bck_sv,name_url_map,hosts_lb,name_patcher,name_httpro,name_fwr,port_range_fwr):
+def load_balancer(name_bck_sv,name_url_map,hosts_lb,name_patcher,name_httpro,name_fwr,port_range_fwr,instance_groups):
+    tcp_health_check = gcp.compute.HealthCheck("tcp-health-check",
+    check_interval_sec=1,
+    tcp_health_check=gcp.compute.HealthCheckTcpHealthCheckArgs(
+        port=30001,
+    ),
+    timeout_sec=1)
     default_backend_service = gcp.compute.BackendService(name_bck_sv,
     port_name="http",
     protocol="HTTP",
+    health_checks=tcp_health_check,
+    backends=instance_groups,
     timeout_sec=10,
     load_balancing_scheme="EXTERNAL_MANAGED")
     default_url_map = gcp.compute.URLMap(name_url_map,
