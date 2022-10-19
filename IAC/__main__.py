@@ -39,7 +39,7 @@ if __name__ == "__main__":
     # #Create firewall rule for internal connection between machines
     # #VAR: name_net,name_rule,ports_tcp,fire_tags,source_ranges
         name_rule="allow-kubernetes-internal"
-        ports_tcp=["6443"]
+        ports_tcp=["6443","10250","2379","2380","10251","10252","10255","3000"]
         source_ranges=["10.0.1.0/25"]
         fw.firewall_rule_internal(vpc,name_netw,name_rule,ports_tcp,source_ranges)
     # #Create firewall rule for internal connection between machines
