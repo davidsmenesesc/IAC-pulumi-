@@ -7,6 +7,7 @@ import VPC as VPC
 import instance_group as ig
 import cloud_sql_instance as sql
 import load_balancer as lb
+import credentials as cre
 
 if __name__ == "__main__":
     #Create network
@@ -39,13 +40,13 @@ if __name__ == "__main__":
     # #Create firewall rule for internal connection between machines
     # #VAR: name_net,name_rule,ports_tcp,fire_tags,source_ranges
         name_rule="allow-kubernetes-internal"
-        ports_tcp=["6443","10250","2379","2380","10251","10252","10255","3000"]
-        source_ranges=["10.0.1.0/25"]
+        ports_tcp=["6443","10250","2379","2380","10251","10252","10255","30000","9090"]
+        source_ranges=["10.0.1.0/25","10.0.0.0/25"]
         fw.firewall_rule_internal(vpc,name_netw,name_rule,ports_tcp,source_ranges)
     # #Create firewall rule for internal connection between machines
     # #VAR: name_net,name_rule,ports_tcp,fire_tags,source_ranges
         name_rule="allow-lb-internal"
-        ports_tcp=["30001"]
+        ports_tcp=["30001","8001","30000","3000","32000"]
         source_ranges=["35.191.0.0/16","130.211.0.0/22"]
         fw.firewall_rule_internal(vpc,name_netw,name_rule,ports_tcp,source_ranges)
     # #Create firewall rule for internal connection between machines
@@ -57,7 +58,7 @@ if __name__ == "__main__":
     # #VAR: network,name_net,name_rule,ports_tcp,target_tag,source_ranges
         name_rule="allow-external-cicd"
         ports_tcp=["8080"]
-        source_ranges=["186.155.18.82"]
+        source_ranges=["186.155.19.52","192.30.252.0/22","185.199.108.0/22","140.82.112.0/20","143.55.64.0/20"]
         target_tag1=["cicd"]
         fw.firewall_rule_CICD(vpc,name_netw,name_rule,ports_tcp,target_tag1,source_ranges)
     #Create router for internet access
@@ -76,7 +77,7 @@ if __name__ == "__main__":
         sqlinstance=sql.cloud_sql_instance(vpc,vpc.id,instance_name,sql_region,version,tier_db,database_name)
     #Create user
     #user_name,instance_name,host,password
-        sql.user_db(user_name="user",instance_name=sqlinstance.name,host="%",password="password")
+        sql.user_db(cre.returnuser(),instance_name=sqlinstance.name,host="%",password=cre.returnpass())
     #Create virtual machines for kubernetes
     #Startup script
     #VAR: name,mach_type,mach_zone,mach_tags,mach_image,mach_netw,mach_subnet,startup_script,service_email
@@ -151,7 +152,7 @@ if __name__ == "__main__":
         mach_subnet="management-subnet"
         script=script_jen
         service_email="998637135499-compute@developer.gserviceaccount.com"
-        vm5=vm.create_jen_vm(subnet_kube,mach_name,mach_type,mach_zone,mach_tags,mach_image,mach_netw,mach_subnet,script,service_email)
+        vm6=vm.create_jen_vm(subnet_kube,mach_name,mach_type,mach_zone,mach_tags,mach_image,mach_netw,mach_subnet,script,service_email)
     #Create instance groups
         name_instance_group="zone-b-kube"
         description="Zone b for ig"
@@ -168,7 +169,25 @@ if __name__ == "__main__":
         instances.append(instance2)
         zone="us-east1-c"
         instanceg2=ig.instance_group(vpc,name_instance_group,description,instances,zone)
+    #Create instance groups
+        name_instance_group="zone-b-kube-m"
+        description="Zone b for ig-m"
+        instance2=vm1.self_link
+        instances=[]
+        instances.append(instance2)
+        zone="us-east1-b"
+        instanceg3=ig.instance_group(vpc,name_instance_group,description,instances,zone)
+    #Create instance groups
+        name_instance_group="zone-c-kube-m"
+        description="Zone c for ig-m"
+        instance2=vm3.self_link
+        instances=[]
+        instances.append(instance2)
+        zone="us-east1-c"
+        instanceg4=ig.instance_group(vpc,name_instance_group,description,instances,zone)
         #Creation of the load balancer
         #name_bck_sv,name_url_map,hosts_lb,name_patcher,name_httpro,name_fwr,port_range_fwr
-        lb.load_balancer(name_bck_sv="mvi-bck-sv",name_url_map="lb-mvi",hosts_lb=["mviapp.com"],name_patcher="patcher-mvi",name_httpro="mvi-proxy",name_fwr="mvi-rule",port_range_fwr=8080,instance_groups=[gcp.compute.BackendServiceBackendArgs(group=instanceg1.id,),gcp.compute.BackendServiceBackendArgs(group=instanceg2.id,)])
-        #lb.load_balancer_base()
+        lb.load_balancer(name_bck_sv="mvi-bck-sv",name_url_map="lb-mvi",hosts_lb=["mviapp.com"],name_patcher="patcher-mvi",name_httpro="mvi-proxy",name_fwr="mvi-rule",port_range_fwr=8080,instance_groups=[gcp.compute.BackendServiceBackendArgs(group=instanceg1.id,),gcp.compute.BackendServiceBackendArgs(group=instanceg2.id,)],listening_port=30001,name_hc="tcp-health-check")
+        #name_bck_sv,name_url_map,hosts_lb,name_patcher,name_httpro,name_fwr,port_range_fwr
+        #lb.load_balancer(name_bck_sv="mvi-moni-sv",name_url_map="moni-mvi",hosts_lb=["mvisv.com"],name_patcher="patcher-moni",name_httpro="moni-proxy",name_fwr="moni-rule",port_range_fwr=80,instance_groups=[gcp.compute.BackendServiceBackendArgs(group=instanceg3.id,),gcp.compute.BackendServiceBackendArgs(group=instanceg4.id,)],listening_port=3000,name_hc="moni-health-check")
+        lb.load_balancer(name_bck_sv="mvi-moni-gr",name_url_map="moni-mvi-gr",hosts_lb=["mvisvg.com"],name_patcher="patcher-mongr",name_httpro="moni-proxy-gr",name_fwr="moni-rule-gr",port_range_fwr=80,instance_groups=[gcp.compute.BackendServiceBackendArgs(group=instanceg1.id,),gcp.compute.BackendServiceBackendArgs(group=instanceg2.id,)],listening_port=30000,name_hc="moni-health-check-gr")
